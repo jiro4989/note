@@ -6,7 +6,7 @@ description   = "A note cli for you"
 license       = "MIT"
 srcDir        = "src"
 bin           = @["note"]
-
+binDir        = "bin"
 
 
 # Dependencies
