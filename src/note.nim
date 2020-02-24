@@ -22,11 +22,12 @@ proc createDefaultConfigFile(file: string) =
 
   let defaultConfig = &"""
 note_dir = "{defaultNoteDir}"
+title = ""
 editor = "vim"
 file_date_prefix = "yyyy-MM-dd"
 file_extension = ".md"
-copy_from_yesterday_note = false
-title = ""
+copy_from_recently_file = false
+template_file = "" # relative path from config directory
 filter_cmd = "peco"
 """
   writeFile(file, defaultConfig)
@@ -67,9 +68,14 @@ proc cmdNew(config = configBaseName, title: seq[string]): int =
         now().format(datePrefix) & "_"
       else: ""
     noteFile = noteDir / prefix & title & ext
+    templateFile = configDir / config["template_file"].getStr()
 
   if not existsDir(noteDir):
     createDir(noteDir)
+  if not existsFile(noteFile) and templateFile != "":
+    let body = readFile(templateFile)
+    writeFile(noteFile, body)
+
   discard execCmd(editor & " " & noteFile)
   echo noteFile
 
@@ -100,6 +106,13 @@ proc cmdConfig(config = configBaseName): int =
 proc cmdServer(): int =
   discard
 
+proc cmdInfo(): int =
+  ## print information.
+  let configFile = configDir / configBaseName
+  echo &"config directory: {configDir}"
+  echo &"default config file: {configFile}"
+  echo &"default note directory: {defaultNoteDir}"
+
 when isMainModule:
   import cligen
   clCfg.version = version
@@ -107,4 +120,5 @@ when isMainModule:
                 [cmdEdit, cmdName="edit"],
                 [cmdConfig, cmdName="config"],
                 [cmdServer, cmdName="server"],
+                [cmdInfo, cmdName="info"],
   )
