@@ -15,6 +15,10 @@ let
   configBaseName = "config.toml"
   defaultNoteDir = getHomeDir() / "Documents" / "note"
 
+proc getYesterdayFile(dir: string): string =
+  for f in walkFiles(dir/"*"):
+    result = f
+
 proc createDefaultConfigFile(file: string) =
   let dir = parentDir(file)
   if not existsDir(dir):
@@ -26,7 +30,7 @@ title = ""
 editor = "vim"
 file_date_prefix = "yyyy-MM-dd"
 file_extension = ".md"
-copy_from_recently_file = false
+copy_from_yesterday_file = false
 template_file = "" # relative path from config directory
 filter_cmd = "peco"
 """
@@ -64,14 +68,21 @@ proc cmdNew(config = configBaseName, title: seq[string]): int =
     ext = config["file_extension"].getStr()
     editor = config["editor"].getStr()
     prefix =
-      if datePrefix != "":
-        now().format(datePrefix) & "_"
+      if datePrefix != "": now().format(datePrefix) & "_"
       else: ""
-    noteFile = noteDir / prefix & title & ext
+    copyFromYesterdayFile = config["copy_from_yesterday_file"].getBool()
+    noteBaseName = prefix & title & ext
+    noteFile = noteDir / noteBaseName
     templateBaseName = config["template_file"].getStr()
 
   if not existsDir(noteDir):
     createDir(noteDir)
+
+  if copyFromYesterdayFile:
+    let yesterdayFile = getYesterdayFile(noteDir)
+    if yesterdayFile != "" and yesterdayFile != noteFile:
+      copyFile(yesterdayFile, noteFile)
+
   if not existsFile(noteFile) and templateBaseName != "":
     let templateFile = configDir / templateBaseName
     let body = readFile(templateFile)
