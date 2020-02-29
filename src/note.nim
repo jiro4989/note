@@ -1,8 +1,8 @@
-import os, rdstdin, strutils, times
+import os, rdstdin, strutils, times, asynchttpserver, asyncdispatch, packages/docutils/rstgen
 from osproc import execCmd
 from strformat import `&`
 
-import parsetoml
+import parsetoml, jester
 
 const
   version = """note version 0.1.0
@@ -44,8 +44,7 @@ proc cmdNew(config = configBaseName, title: seq[string]): int =
   if not existsFile(configFile):
     createDefaultConfigFile(configFile)
 
-  let
-    config = parsetoml.parseFile(configFile)
+  let config = parsetoml.parseFile(configFile)
 
   var title =
     if 1 <= title.len and title[0] != "": title[0]
@@ -115,8 +114,38 @@ proc cmdConfig(config = configBaseName): int =
   discard execCmd(editor & " " & configFile)
   echo configFile
 
-proc cmdServer(): int =
-  discard
+var serverConfig: string
+router myrouter:
+  get "/":
+    let
+      configFile = configDir / serverConfig
+      config = parsetoml.parseFile(configFile)
+      noteDir = config["note_dir"].getStr()
+    var links: seq[string]
+    for f in walkFiles(noteDir/"*"):
+      let (_, base, ext) = splitFile(f)
+      let baseName = base & ext
+      let link = &"""<a href="/{baseName}">{baseName}</a>"""
+      links.add(link)
+    resp links.join("<br />")
+  get "/@file":
+    let
+      baseName = @"file"
+      configFile = configDir / serverConfig
+      config = parsetoml.parseFile(configFile)
+      noteDir = config["note_dir"].getStr()
+      noteFile = noteDir / baseName
+      bodyText = readFile(noteFile)
+      bodyHtml = rstToHtml(bodyText, {}, newStringTable(modeStyleInsensitive))
+    resp bodyHtml
+
+proc cmdServer(config = configBaseName): int =
+  serverConfig = config
+  let port = 8080
+  var settings = newSettings(port = Port(port))
+  var jester = initJester(myrouter, settings = settings)
+  echo "http://localhost:" & $port
+  jester.serve()
 
 proc cmdInfo(): int =
   ## print information.
