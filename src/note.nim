@@ -68,11 +68,12 @@ proc cmdNew(config = configBaseName, title: seq[string]): int =
         now().format(datePrefix) & "_"
       else: ""
     noteFile = noteDir / prefix & title & ext
-    templateFile = configDir / config["template_file"].getStr()
+    templateBaseName = config["template_file"].getStr()
 
   if not existsDir(noteDir):
     createDir(noteDir)
-  if not existsFile(noteFile) and templateFile != "":
+  if not existsFile(noteFile) and templateBaseName != "":
+    let templateFile = configDir / templateBaseName
     let body = readFile(templateFile)
     writeFile(noteFile, body)
 
